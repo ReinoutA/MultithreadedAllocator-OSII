@@ -191,8 +191,8 @@ public class Arena {
                     block.free(address);
                 } catch (BlockException e) {
                     memoryBlocks.remove(block);
-                    backingStore.munmap(block.getStartAddress(), block.getBlockSize());
-
+                    //backingStore.munmap(block.getStartAddress(), block.getBlockSize());
+                    //todo Misschien unmappen wanneer je beslist dat er teveel geheugen gealloceerd is?
                     if(memoryBlocks.isEmpty())
                         throw new ArenaException("No blocks in the arena");
                 }

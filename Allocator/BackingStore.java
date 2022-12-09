@@ -88,6 +88,6 @@ public class BackingStore {
         // System.out.println("Unmapping region [" + address + ", " + (address + size) + "[");
         assert_true(isAllocated(address, size));
         for (Long a = address;  a < address + size; a += 0x1000L)
-            munmapPage(address);
+            munmapPage(a);
     }
 }

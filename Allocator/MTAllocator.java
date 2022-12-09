@@ -7,36 +7,35 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import Debugger.Logger;
 
 public class MTAllocator implements Allocator {
-    public ConcurrentHashMap<String, STAllocator> allocators;;
+    // Add a read-write lock to control access to the allocators map
+    private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+
+    public ConcurrentHashMap<String, STAllocator> allocators;
+    ;
 
     private Logger logger;
 
-    private ReadWriteLock lock;
 
     public MTAllocator() {
         allocators = new ConcurrentHashMap<>();
         logger = Logger.getInstance();
-        lock = new ReentrantReadWriteLock();
     }
+
 
     public STAllocator getAllocator(boolean createIfNotExists) {
         String threadName = Thread.currentThread().getName();
 
-        lock.readLock().lock();
         STAllocator allocator;
-        synchronized(allocators) {
-            allocator = allocators.get(threadName);
-        }
-        lock.readLock().unlock();
 
-        if(allocator == null) {
-            if(createIfNotExists) {
-                allocator = new STAllocator();
-                lock.writeLock().lock();
-                allocators.put(threadName, allocator);
-                lock.writeLock().unlock();
-            } else throw new AllocatorException("Allocator does not exist");
-        }
+        // Use the computeIfAbsent method to check if the allocator exists
+        // and create it if it does not
+        allocator = allocators.computeIfAbsent(threadName, (k) -> {
+            if (createIfNotExists) {
+                return new STAllocator();
+            } else {
+                throw new AllocatorException("Allocator does not exist");
+            }
+        });
 
         return allocator;
     }
@@ -46,70 +45,95 @@ public class MTAllocator implements Allocator {
         Long address;
         STAllocator allocator = getAllocator(true);
 
-        if(allocator == null)
+        if (allocator == null)
             throw new NullPointerException();
         address = allocator.allocate(size);
         return address;
     }
 
     @Override
-    public void free(Long address) throws AllocatorException {
-        try {
-            // Get the allocator of the thread that allocated the address
-            STAllocator allocator = getAllocator(false);
+    public void free(Long address) {
+        boolean found = false;
 
-            synchronized(allocator) {
-                allocator.free(address);    // Free the address while synchronising on the allocator
-            }
-        } catch(AllocatorException e) {
-            boolean found;
-            // Release the read lock on the lock field before trying to synchronize on the STAllocator instances
-            lock.readLock().unlock();
-            // Acquire a lock on the allocators map before iterating over it
-            lock.writeLock().lock();
-            // If not found in the own allocator search in all other allocators and try to free the address
-            for(STAllocator allocator : allocators.values()) {
-                try {
+        // Acquire a read lock on the allocators map
+        rwLock.readLock().lock();
+        try {
+            // Iterate over the allocators map and call the free method
+            // on the appropriate allocator
+            for (STAllocator a : allocators.values()) {
+                if (a.isAccessible(address)) {
+                    a.free(address);
                     found = true;
-                    synchronized(allocator) {
-                        allocator.free(address);
-                    }
-                } catch(AllocatorException e2) {
-                    found = false;
-                }
-                if(found)
                     break;
+                }
             }
-            // Release the lock on the allocators map
-            lock.writeLock().unlock();
+        } finally {
+            // Release the read lock on the allocators map
+            rwLock.readLock().unlock();
+        }
+
+        // If the address was not found in any allocator, log a warning
+        if (!found) {
+            logger.log("Address " + address + " not found in any allocator");
         }
     }
 
 
     @Override
     public Long reAllocate(Long oldAddress, int newSize) {
-        free(oldAddress);
-        return allocate(newSize);
+        // Acquire a write lock on the allocators map
+        rwLock.writeLock().lock();
+        try {
+            // Iterate over the allocators map and call the free method
+            // on the appropriate allocator
+            for (STAllocator a : allocators.values()) {
+                if (a.isAccessible(oldAddress)) {
+                    a.free(oldAddress);
+                    break;
+                }
+            }
+
+            // Get the allocator of the current thread
+            STAllocator allocator = getAllocator(true);
+            if (allocator == null)
+                throw new NullPointerException();
+
+            // Allocate the new memory while synchronising on the allocator
+            return allocator.allocate(newSize);
+        } finally {
+            // Release the write lock on the allocators map
+            rwLock.writeLock().unlock();
+        }
     }
+
     @Override
     public boolean isAccessible(Long address) {
         return isAccessible(address, 1);
     }
+
+
     @Override
     public boolean isAccessible(Long address, int size) {
-        // Acquire a lock on the allocators map before iterating over it
-        lock.readLock().lock();
-        for(STAllocator a : allocators.values()) {
-            synchronized(a) {
-                if(a.isAccessible(address, size)) {
-                    lock.readLock().unlock();
+        // Acquire a read lock on the allocators map before iterating over it
+        rwLock.readLock().lock();
+        try {
+            // Iterate over the allocators map and check if the address is accessible
+            // in any of the allocators
+            for (STAllocator a : allocators.values()) {
+                // Use a local variable to store the result of the isAccessible method
+                boolean accessible = a.isAccessible(address);
+                if (accessible) {
                     return true;
                 }
             }
+        } finally {
+            // Release the read lock on the allocators map
+            rwLock.readLock().unlock();
         }
-        // Release the lock on the allocators map
-        lock.readLock().unlock();
+
+        // If the address was not found in any allocator, return false
         return false;
+
     }
 
 }

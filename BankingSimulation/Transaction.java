@@ -31,10 +31,10 @@ public class Transaction {
             while (this.size < 5000 && Math.random() < 0.2)
                 this.size *= 2;
             this.address = Allocator.instance.allocate(size);
-            //ensureAllocated(true);
+            ensureAllocated(true);
             this.size *= 2;
             this.address = Allocator.instance.reAllocate(address, size);
-            //ensureAllocated(true);
+            ensureAllocated(true);
             totalSize.getAndAdd(this.size + this.size/2);
             if (this.size >= 8192)
                 numTransactionsBiggerThan2Pages.incrementAndGet();
@@ -46,14 +46,14 @@ public class Transaction {
         if (ENABLE_ALLOCATOR) {
             size = Math.max(16, Math.random() < 0.5 ? size/2 : size*2);
             address = Allocator.instance.reAllocate(address, size);
-            //ensureAllocated(true);
+            ensureAllocated(true);
         }
     }
 
     public void release() {
         if (ENABLE_ALLOCATOR) {
             Allocator.instance.free(address);
-            //ensureAllocated(false);
+            ensureAllocated(false);
         }
     }
 

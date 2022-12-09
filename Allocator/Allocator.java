@@ -5,7 +5,7 @@ package Allocator;
 
 public interface Allocator {
     /* Modify this static var to return an instantiated version of your allocator  */
-    static Allocator instance = new MTAllocator2();
+    static Allocator instance = new MTAllocator();
 
     /* Allocates a new region of memory with the specified size */
     public Long allocate(int size);
