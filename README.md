@@ -1,6 +1,4 @@
 # LAB3_Besturingssystemen2
-Github repositorie: https://github.com/brechtvandesijpe/LAB3_Besturingssystemen2
-→ branch Synchronisatie
 
 ## Allocator
 De Allocator package bevat volgende onderdelen:
