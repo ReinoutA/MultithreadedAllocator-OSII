@@ -1,5 +1,6 @@
 package BankingSimulation;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,13 +24,13 @@ public class Bank {
     private AtomicLong numTransactionsInserted = new AtomicLong(0);
     final private Logger logger = new Logger(this);
 
-    public Bank () {
+    public Bank () throws IOException {
         accounts = Collections.unmodifiableList(new ArrayList<>() {{
             for (int i = 0; i < 1000; i++)
                 add(new Account(i));
         }});
         workers = Collections.unmodifiableList(new ArrayList<>() {{
-            for (int i = 0; i < 75; i++)
+            for (int i = 0; i < 25; i++)
                 add(new Worker(Bank.this));
         }});
         for (var worker : workers)

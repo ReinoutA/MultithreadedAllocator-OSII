@@ -1,11 +1,19 @@
 package BankingSimulation;
 
+import java.io.FileWriter;
+import java.io.IOException;
+
 public class Logger extends Thread {
     private Bank bank;
 
-    public Logger (Bank bank) {
+    public Logger (Bank bank) throws IOException {
         this.bank = bank;
     }
+
+    FileWriter fw = new FileWriter("log.txt");
+
+
+
 
     @Override
     public void run() {
@@ -29,9 +37,11 @@ public class Logger extends Thread {
             System.out.println("\tBank is receiving " +  ((float)change)/(sleepTime/1000)  + " transactions/s.");
             System.out.println("\tAverage allocation size: " + Transaction.totalSize.get()/Transaction.numTransactions.get());
             System.out.println("\t% large allocations : " + (100f*Transaction.numTransactionsBiggerThan2Pages.get())/((float)Transaction.numTransactions.get()) + "%");
+            //System.out.println(((float)change)/(sleepTime/1000)); //new
             oldNumTransactionsProcessed = numTransactionsProcessed;
             oldNumTransactionsInserted = numTransactionsInserted;
             oldTime = System.currentTimeMillis();
         }
+
     }
 }
